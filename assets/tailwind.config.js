@@ -15,7 +15,17 @@ module.exports = {
     extend: {
       colors: {
         brand: "#FD4F00",
-      }
+        lumon: {
+          cream: "#F0EDE6",
+          dark: "#0D1C2A",
+          mid: "#4A6572",
+          teal: "#2E9E85",
+          light: "#A8C4BC",
+        },
+      },
+      fontFamily: {
+        mono: ["'IBM Plex Mono'", "ui-monospace", "SFMono-Regular", "monospace"],
+      },
     },
   },
   plugins: [

@@ -1,0 +1,71 @@
+<div class="min-h-screen bg-lumon-cream flex flex-col items-center justify-center px-4">
+  <div class="w-full max-w-md">
+
+    <%!-- Lumon logo / header --%>
+    <div class="text-center mb-10">
+      <p class="text-xs tracking-[0.4em] text-lumon-teal font-mono uppercase mb-3">Lumon Industries</p>
+      <h1 class="text-3xl font-mono font-bold text-lumon-dark tracking-tight uppercase">
+        The Music Dance<br />Experience
+      </h1>
+      <div class="mt-3 h-px bg-lumon-teal/30 w-full"></div>
+      <p class="mt-3 text-xs tracking-widest text-lumon-mid font-mono uppercase">
+        Severed Floor — Employee Terminal
+      </p>
+    </div>
+
+    <%!-- Flash messages --%>
+    <%= if msg = Phoenix.Flash.get(@flash, :error) do %>
+      <div class="mb-4 border border-red-300 bg-red-50 px-4 py-3 font-mono text-xs text-red-700 tracking-wider uppercase">
+        ⚠ <%= msg %>
+      </div>
+    <% end %>
+
+    <%!-- Login form --%>
+    <form method="post" action="/login" class="space-y-5">
+      <input type="hidden" name="_csrf_token" value={Phoenix.Controller.get_csrf_token()} />
+
+      <div>
+        <label class="block text-xs font-mono tracking-[0.3em] text-lumon-mid uppercase mb-2">
+          Employee Designation
+        </label>
+        <div class="relative">
+          <input
+            type="text"
+            name="username"
+            value={@suggested_username}
+            class="w-full bg-white border border-lumon-teal/40 px-4 py-3 font-mono text-sm text-lumon-dark tracking-wide focus:outline-none focus:border-lumon-teal focus:ring-1 focus:ring-lumon-teal placeholder-lumon-mid/40"
+            placeholder="e.g. LumonEmployee42"
+            autocomplete="off"
+          />
+        </div>
+        <p class="mt-1 text-xs font-mono text-lumon-mid/60 tracking-wide">
+          A designation has been suggested. You may alter it.
+        </p>
+      </div>
+
+      <div>
+        <label class="block text-xs font-mono tracking-[0.3em] text-lumon-mid uppercase mb-2">
+          Access Code
+        </label>
+        <input
+          type="password"
+          name="access_code"
+          class="w-full bg-white border border-lumon-teal/40 px-4 py-3 font-mono text-sm text-lumon-dark tracking-wide focus:outline-none focus:border-lumon-teal focus:ring-1 focus:ring-lumon-teal"
+          placeholder="••••••••"
+          autocomplete="off"
+        />
+      </div>
+
+      <button
+        type="submit"
+        class="w-full bg-lumon-teal text-white font-mono text-sm tracking-[0.3em] uppercase py-3 hover:bg-lumon-teal/90 transition-colors focus:outline-none focus:ring-2 focus:ring-lumon-teal focus:ring-offset-2"
+      >
+        Proceed
+      </button>
+    </form>
+
+    <p class="mt-8 text-center text-xs font-mono text-lumon-mid/40 tracking-widest uppercase">
+      Your outie need not know what was queued.
+    </p>
+  </div>
+</div>
