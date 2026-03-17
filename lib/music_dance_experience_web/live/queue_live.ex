@@ -283,7 +283,7 @@ defmodule MusicDanceExperienceWeb.QueueLive do
 
       <footer class="mt-16 pb-8 text-center">
         <p class="font-mono text-xs text-lumon-mid/30 tracking-widest uppercase">
-          Kier, Ambrose, Drum, and Odelia — The Four Tempers
+          Frolic, Mailce, Woe, and Dread — The Four Tempers
         </p>
       </footer>
     </div>
