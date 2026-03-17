@@ -19,7 +19,14 @@ defmodule MusicDanceExperience.Application do
     ]
 
     opts = [strategy: :one_for_one, name: MusicDanceExperience.Supervisor]
-    Supervisor.start_link(children, opts)
+    result = Supervisor.start_link(children, opts)
+
+    Task.start(fn ->
+      Process.sleep(2_000)
+      MusicDanceExperience.QueueAgent.seed_from_spotify()
+    end)
+
+    result
   end
 
   # Tell Phoenix to update the endpoint configuration
