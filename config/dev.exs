@@ -4,7 +4,7 @@ import Config
 config :music_dance_experience,
   spotify_client_id: System.get_env("SPOTIFY_CLIENT_ID") || "REDACTED_CLIENT_ID",
   spotify_client_secret: System.get_env("SPOTIFY_CLIENT_SECRET") || "REDACTED_CLIENT_SECRET",
-  spotify_redirect_uri: System.get_env("SPOTIFY_REDIRECT_URI") || "http://127.0.0.1:4000/auth/spotify/callback",
+  spotify_redirect_uri: System.get_env("SPOTIFY_REDIRECT_URI") || "http://localhost:4000/auth/spotify/callback",
   app_password: System.get_env("APP_PASSWORD") || "lumon"
 
 # For development, we disable any cache and enable

@@ -2,6 +2,9 @@ defmodule MusicDanceExperienceWeb.QueueLive do
   use MusicDanceExperienceWeb, :live_view
 
   alias MusicDanceExperience.{Spotify, SpotifyToken, QueueAgent}
+  alias MusicDanceExperienceWeb.Presence
+
+  @presence_topic "queue:presence"
 
   @impl true
   def mount(_params, session, socket) do
@@ -9,7 +12,11 @@ defmodule MusicDanceExperienceWeb.QueueLive do
 
     if connected?(socket) do
       Phoenix.PubSub.subscribe(MusicDanceExperience.PubSub, QueueAgent.topic())
+      Presence.track(self(), @presence_topic, username, %{})
+      MusicDanceExperienceWeb.Endpoint.subscribe(@presence_topic)
     end
+
+    online_users = if connected?(socket), do: Presence.list(@presence_topic) |> Map.keys(), else: []
 
     {:ok,
      socket
@@ -20,6 +27,7 @@ defmodule MusicDanceExperienceWeb.QueueLive do
      |> assign(:searching, false)
      |> assign(:now_playing, MusicDanceExperience.QueuePoller.now_playing())
      |> assign(:spotify_connected, SpotifyToken.connected?())
+     |> assign(:online_users, online_users)
      |> assign(:page_title, "Music Dance Experience")}
   end
 
@@ -115,6 +123,12 @@ defmodule MusicDanceExperienceWeb.QueueLive do
   end
 
   @impl true
+  def handle_info(%Phoenix.Socket.Broadcast{event: "presence_diff"}, socket) do
+    online_users = Presence.list(@presence_topic) |> Map.keys()
+    {:noreply, assign(socket, online_users: online_users)}
+  end
+
+  @impl true
   def render(assigns) do
     ~H"""
     <div class="min-h-screen bg-lumon-cream">
@@ -147,6 +161,19 @@ defmodule MusicDanceExperienceWeb.QueueLive do
           </div>
         </div>
       </header>
+
+      <%!-- Online employees --%>
+      <%= if length(@online_users) > 0 do %>
+        <div class="border-b border-lumon-teal/10 bg-lumon-teal/[0.03]">
+          <div class="max-w-3xl mx-auto px-4 py-1.5 flex items-center gap-2">
+            <span class="w-1.5 h-1.5 rounded-full bg-lumon-teal/50 flex-shrink-0"></span>
+            <p class="font-mono text-[10px] text-lumon-mid/50 tracking-[0.15em] uppercase truncate">
+              <%= length(@online_users) %> <%= if length(@online_users) == 1, do: "employee", else: "employees" %> online —
+              <span class="text-lumon-mid/40"><%= Enum.join(@online_users, " · ") %></span>
+            </p>
+          </div>
+        </div>
+      <% end %>
 
       <main class="max-w-3xl mx-auto px-4 py-8 space-y-8">
 

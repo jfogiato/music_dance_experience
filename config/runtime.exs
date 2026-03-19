@@ -1,5 +1,16 @@
 import Config
 
+if config_env() == :dev do
+  Dotenvy.source!([".env", System.get_env()])
+  |> Enum.each(fn {k, v} -> System.put_env(k, v) end)
+
+  config :music_dance_experience,
+    spotify_client_id: System.get_env("SPOTIFY_CLIENT_ID") || raise("SPOTIFY_CLIENT_ID missing"),
+    spotify_client_secret: System.get_env("SPOTIFY_CLIENT_SECRET") || raise("SPOTIFY_CLIENT_SECRET missing"),
+    spotify_redirect_uri: System.get_env("SPOTIFY_REDIRECT_URI") || "http://localhost:4000/auth/spotify/callback",
+    app_password: System.get_env("APP_PASSWORD") || "lumon"
+end
+
 # config/runtime.exs is executed for all environments, including
 # during releases. It is executed after compilation and before the
 # system starts, so it is typically used to load production configuration

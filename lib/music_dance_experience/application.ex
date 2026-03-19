@@ -15,6 +15,7 @@ defmodule MusicDanceExperience.Application do
       MusicDanceExperience.SpotifyToken,
       MusicDanceExperience.QueueAgent,
       MusicDanceExperience.QueuePoller,
+      MusicDanceExperienceWeb.Presence,
       MusicDanceExperienceWeb.Endpoint
     ]
 

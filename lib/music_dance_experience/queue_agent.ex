@@ -60,23 +60,42 @@ defmodule MusicDanceExperience.QueueAgent do
     end
   end
 
-  @doc "Remove any local entries whose URIs are not in the given Spotify queue URI list, ignoring recently added tracks."
-  def remove_if_not_in(spotify_uris) do
-    uri_set = MapSet.new(spotify_uris)
-    now = DateTime.utc_now()
-    entries = Agent.get(__MODULE__, & &1)
+  @doc """
+  Syncs the local queue to match Spotify's current queue. Preserves usernames
+  for tracks already known to MDE, and adds externally-queued tracks with \"—\".
+  """
+  def sync_with_spotify do
+    case MusicDanceExperience.Spotify.queued_uris_with_tracks() do
+      {:ok, spotify_tracks} ->
+        current_entries = Agent.get(__MODULE__, & &1)
+        current_by_uri = Map.new(current_entries, &{&1.uri, &1})
 
-    to_remove =
-      entries
-      |> Enum.reject(fn entry ->
-        MapSet.member?(uri_set, entry.uri) or
-          DateTime.diff(now, entry.queued_at) < 15
-      end)
-      |> Enum.map(& &1.id)
+        synced =
+          Enum.map(spotify_tracks, fn track ->
+            case Map.get(current_by_uri, track.uri) do
+              nil ->
+                %{
+                  id: System.unique_integer([:positive, :monotonic]),
+                  track_name: track.name,
+                  artist: track.artist,
+                  album_art: track.album_art,
+                  uri: track.uri,
+                  username: "—",
+                  queued_at: DateTime.utc_now()
+                }
 
-    if to_remove != [] do
-      Agent.update(__MODULE__, fn e -> Enum.reject(e, &(&1.id in to_remove)) end)
-      Enum.each(to_remove, &Phoenix.PubSub.broadcast(@pubsub, @topic, {:track_removed, &1}))
+              existing ->
+                existing
+            end
+          end)
+
+        if synced != current_entries do
+          Agent.update(__MODULE__, fn _ -> synced end)
+          Phoenix.PubSub.broadcast(@pubsub, @topic, :queue_reset)
+        end
+
+      _ ->
+        :ok
     end
   end
 

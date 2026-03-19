@@ -38,10 +38,7 @@ defmodule MusicDanceExperience.QueuePoller do
           state
       end
 
-    case Spotify.queued_uris() do
-      {:ok, uris} -> QueueAgent.remove_if_not_in(uris)
-      _ -> :ok
-    end
+    QueueAgent.sync_with_spotify()
 
     schedule_poll()
     {:noreply, new_state}
