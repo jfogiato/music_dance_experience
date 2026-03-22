@@ -40,7 +40,10 @@ defmodule MusicDanceExperience.QueuePoller do
             Logger.info("[QueuePoller] Track changed: #{track.name} by #{track.artist} (#{track.uri})")
             QueueAgent.remove_up_to_uri(track.uri)
             Phoenix.PubSub.broadcast(@pubsub, @topic, {:now_playing, track})
+          else
+            Logger.debug("[QueuePoller] Track unchanged: #{track.name} (#{track.uri})")
           end
+
           %{state | now_playing: track}
 
         {:ok, nil} ->
@@ -68,8 +71,17 @@ defmodule MusicDanceExperience.QueuePoller do
 
   @impl true
   def handle_info(%Phoenix.Socket.Broadcast{event: "presence_diff", payload: payload}, state) do
-    users_online = MusicDanceExperienceWeb.Presence.list(@presence_topic) |> map_size()
-    Logger.info("[QueuePoller] Presence diff — joins=#{map_size(payload.joins)}, leaves=#{map_size(payload.leaves)}, total=#{users_online}")
+    usernames =
+      MusicDanceExperienceWeb.Presence.list(@presence_topic)
+      |> Map.keys()
+      |> Enum.sort()
+
+    users_online = length(usernames)
+
+    Logger.info(
+      "[QueuePoller] Presence diff — joins=#{map_size(payload.joins)}, leaves=#{map_size(payload.leaves)}, total=#{users_online}, users=#{inspect(usernames)}"
+    )
+
     {:noreply, %{state | users_online: users_online}}
   end
 

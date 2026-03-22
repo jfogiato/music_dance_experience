@@ -1,5 +1,6 @@
 defmodule MusicDanceExperienceWeb.QueueLive do
   use MusicDanceExperienceWeb, :live_view
+  require Logger
 
   alias MusicDanceExperience.{Spotify, SpotifyToken, QueueAgent}
   alias MusicDanceExperienceWeb.Presence
@@ -11,6 +12,7 @@ defmodule MusicDanceExperienceWeb.QueueLive do
     username = Map.get(session, "username", "UNKNOWN EMPLOYEE")
 
     if connected?(socket) do
+      Logger.info("[QueueLive] Tracking presence for username=#{inspect(username)}")
       Phoenix.PubSub.subscribe(MusicDanceExperience.PubSub, QueueAgent.topic())
       Presence.track(self(), @presence_topic, username, %{})
       MusicDanceExperienceWeb.Endpoint.subscribe(@presence_topic)
@@ -126,6 +128,15 @@ defmodule MusicDanceExperienceWeb.QueueLive do
   def handle_info(%Phoenix.Socket.Broadcast{event: "presence_diff"}, socket) do
     online_users = Presence.list(@presence_topic) |> Map.keys()
     {:noreply, assign(socket, online_users: online_users)}
+  end
+
+  @impl true
+  def terminate(reason, socket) do
+    Logger.info(
+      "[QueueLive] Terminating LiveView for username=#{inspect(socket.assigns.username)} reason=#{inspect(reason)}"
+    )
+
+    :ok
   end
 
   @impl true

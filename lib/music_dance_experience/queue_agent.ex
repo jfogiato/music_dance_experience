@@ -1,5 +1,6 @@
 defmodule MusicDanceExperience.QueueAgent do
   use Agent
+  require Logger
 
   @pubsub MusicDanceExperience.PubSub
   @topic "queue:updates"
@@ -19,6 +20,7 @@ defmodule MusicDanceExperience.QueueAgent do
     }
 
     Agent.update(__MODULE__, fn entries -> entries ++ [entry] end)
+    Logger.info("[QueueAgent] Track queued by #{inspect(username)}: #{track.name} (#{track.uri})")
     Phoenix.PubSub.broadcast(@pubsub, @topic, {:track_queued, entry})
     entry
   end
@@ -27,6 +29,8 @@ defmodule MusicDanceExperience.QueueAgent do
   def seed_from_spotify do
     case MusicDanceExperience.Spotify.queued_uris_with_tracks() do
       {:ok, tracks} ->
+        Logger.info("[QueueAgent] Seeding queue from Spotify with #{length(tracks)} track(s)")
+
         entries =
           Enum.map(tracks, fn track ->
             %{
@@ -43,7 +47,8 @@ defmodule MusicDanceExperience.QueueAgent do
         Agent.update(__MODULE__, fn _ -> entries end)
         Phoenix.PubSub.broadcast(@pubsub, @topic, :queue_reset)
 
-      _ ->
+      {:error, reason} ->
+        Logger.warning("[QueueAgent] Seed from Spotify skipped: #{inspect(reason)}")
         :ok
     end
   end
@@ -55,8 +60,16 @@ defmodule MusicDanceExperience.QueueAgent do
 
     if idx != nil do
       to_remove = entries |> Enum.take(idx + 1) |> Enum.map(& &1.id)
+      removed_uris = entries |> Enum.take(idx + 1) |> Enum.map(& &1.uri)
+
+      Logger.info(
+        "[QueueAgent] Removing #{length(to_remove)} queued track(s) up to current URI #{uri}: #{inspect(removed_uris)}"
+      )
+
       Agent.update(__MODULE__, fn e -> Enum.reject(e, &(&1.id in to_remove)) end)
       Enum.each(to_remove, &Phoenix.PubSub.broadcast(@pubsub, @topic, {:track_removed, &1}))
+    else
+      Logger.debug("[QueueAgent] Current Spotify track #{uri} not found in local queue")
     end
   end
 
@@ -69,6 +82,10 @@ defmodule MusicDanceExperience.QueueAgent do
       {:ok, spotify_tracks} ->
         current_entries = Agent.get(__MODULE__, & &1)
         current_by_uri = Map.new(current_entries, &{&1.uri, &1})
+
+        Logger.debug(
+          "[QueueAgent] Syncing queue with Spotify: local=#{length(current_entries)} spotify=#{length(spotify_tracks)}"
+        )
 
         synced =
           Enum.map(spotify_tracks, fn track ->
@@ -90,11 +107,18 @@ defmodule MusicDanceExperience.QueueAgent do
           end)
 
         if synced != current_entries do
+          Logger.info(
+            "[QueueAgent] Queue sync applied: local_uris=#{inspect(Enum.map(current_entries, & &1.uri))} spotify_uris=#{inspect(Enum.map(spotify_tracks, & &1.uri))}"
+          )
+
           Agent.update(__MODULE__, fn _ -> synced end)
           Phoenix.PubSub.broadcast(@pubsub, @topic, :queue_reset)
+        else
+          Logger.debug("[QueueAgent] Queue sync found no changes")
         end
 
-      _ ->
+      {:error, reason} ->
+        Logger.warning("[QueueAgent] Queue sync skipped: #{inspect(reason)}")
         :ok
     end
   end
