@@ -36,6 +36,10 @@ defmodule MusicDanceExperience.QueuePoller do
     new_state =
       case Spotify.now_playing() do
         {:ok, track} when not is_nil(track) ->
+          Logger.info(
+            "[QueuePoller] Playback device — track=#{track.name} uri=#{track.uri} is_playing=#{inspect(track.is_playing)} progress_ms=#{inspect(track.progress_ms)} device=#{inspect(track.device)}"
+          )
+
           if prev == nil or prev.uri != track.uri do
             Logger.info("[QueuePoller] Track changed: #{track.name} by #{track.artist} (#{track.uri})")
             QueueAgent.remove_up_to_uri(track.uri)

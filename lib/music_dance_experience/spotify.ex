@@ -144,7 +144,7 @@ defmodule MusicDanceExperience.Spotify do
 
       cond do
         resp.status == 200 && resp.body["item"] ->
-          {:ok, format_track(resp.body["item"])}
+          {:ok, format_currently_playing(resp.body)}
 
         resp.status == 204 ->
           {:ok, nil}
@@ -166,6 +166,23 @@ defmodule MusicDanceExperience.Spotify do
   end
 
   defp loggable_body(body), do: body
+
+  defp format_currently_playing(body) do
+    track = format_track(body["item"])
+    device = body["device"] || %{}
+
+    Map.merge(track, %{
+      is_playing: body["is_playing"],
+      progress_ms: body["progress_ms"],
+      device: %{
+        id: device["id"],
+        name: device["name"],
+        type: device["type"],
+        is_active: device["is_active"],
+        volume_percent: device["volume_percent"]
+      }
+    })
+  end
 
   defp format_track(track) do
     %{
