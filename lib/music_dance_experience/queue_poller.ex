@@ -23,13 +23,6 @@ defmodule MusicDanceExperience.QueuePoller do
   end
 
   @impl true
-  def handle_info(:poll, %{users_online: 0} = state) do
-    Logger.debug("[QueuePoller] Skipping poll — no users online")
-    schedule_poll()
-    {:noreply, state}
-  end
-
-  @impl true
   def handle_info(:poll, %{now_playing: prev, tick: tick, users_online: count} = state) do
     Logger.debug("[QueuePoller] Polling — #{count} user(s) online, tick=#{tick}")
 
