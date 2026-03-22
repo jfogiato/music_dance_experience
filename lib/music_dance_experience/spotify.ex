@@ -144,6 +144,7 @@ defmodule MusicDanceExperience.Spotify do
 
       cond do
         resp.status == 200 && resp.body["item"] ->
+          maybe_log_devices(token, resp.body)
           {:ok, format_currently_playing(resp.body)}
 
         resp.status == 204 ->
@@ -166,6 +167,46 @@ defmodule MusicDanceExperience.Spotify do
   end
 
   defp loggable_body(body), do: body
+
+  defp maybe_log_devices(token, body) do
+    device = body["device"] || %{}
+
+    if Enum.all?(["id", "name", "type", "is_active", "volume_percent"], &is_nil(device[&1])) do
+      Logger.warning(
+        "[Spotify] currently-playing returned no device metadata; top_level_keys=#{inspect(Map.keys(body) |> Enum.sort())}"
+      )
+
+      log_available_devices(token)
+    end
+  end
+
+  defp log_available_devices(token) do
+    resp =
+      Req.get!("#{@api_base}/me/player/devices",
+        headers: [authorization: "Bearer #{token}"]
+      )
+
+    if resp.status == 200 do
+      devices =
+        Enum.map(resp.body["devices"] || [], fn device ->
+          %{
+            id: device["id"],
+            is_active: device["is_active"],
+            is_private_session: device["is_private_session"],
+            is_restricted: device["is_restricted"],
+            name: device["name"],
+            type: device["type"],
+            volume_percent: device["volume_percent"]
+          }
+        end)
+
+      Logger.info("[Spotify] Available devices snapshot: #{inspect(devices)}")
+    else
+      Logger.warning(
+        "[Spotify] devices fetch failed: status=#{resp.status} body=#{inspect(loggable_body(resp.body))}"
+      )
+    end
+  end
 
   defp format_currently_playing(body) do
     track = format_track(body["item"])
