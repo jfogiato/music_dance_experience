@@ -16,7 +16,7 @@ defmodule MusicDanceExperience.QueuePoller do
 
   @impl true
   def init(_) do
-    MusicDanceExperienceWeb.Endpoint.subscribe(@presence_topic)
+    Phoenix.PubSub.subscribe(@pubsub, @presence_topic)
     Logger.info("[QueuePoller] Started, subscribed to presence topic #{@presence_topic}")
     schedule_poll()
     {:ok, %{now_playing: nil, tick: 0, users_online: 0}}

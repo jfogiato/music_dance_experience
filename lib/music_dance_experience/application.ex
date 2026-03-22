@@ -14,9 +14,9 @@ defmodule MusicDanceExperience.Application do
       {Finch, name: MusicDanceExperience.Finch},
       MusicDanceExperience.SpotifyToken,
       MusicDanceExperience.QueueAgent,
-      MusicDanceExperience.QueuePoller,
       MusicDanceExperienceWeb.Presence,
-      MusicDanceExperienceWeb.Endpoint
+      MusicDanceExperienceWeb.Endpoint,
+      MusicDanceExperience.QueuePoller
     ]
 
     opts = [strategy: :one_for_one, name: MusicDanceExperience.Supervisor]
