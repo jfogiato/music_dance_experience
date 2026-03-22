@@ -5,7 +5,8 @@ defmodule MusicDanceExperience.QueuePoller do
 
   @pubsub MusicDanceExperience.PubSub
   @topic "queue:updates"
-  @poll_interval 5_000
+  @poll_interval 10_000
+  @sync_every 3
 
   def start_link(_), do: GenServer.start_link(__MODULE__, nil, name: __MODULE__)
 
@@ -14,11 +15,11 @@ defmodule MusicDanceExperience.QueuePoller do
   @impl true
   def init(_) do
     schedule_poll()
-    {:ok, %{now_playing: nil}}
+    {:ok, %{now_playing: nil, tick: 0}}
   end
 
   @impl true
-  def handle_info(:poll, %{now_playing: prev} = state) do
+  def handle_info(:poll, %{now_playing: prev, tick: tick} = state) do
     new_state =
       case Spotify.now_playing() do
         {:ok, track} when not is_nil(track) ->
@@ -38,10 +39,11 @@ defmodule MusicDanceExperience.QueuePoller do
           state
       end
 
-    QueueAgent.sync_with_spotify()
+    new_tick = tick + 1
+    if rem(new_tick, @sync_every) == 0, do: QueueAgent.sync_with_spotify()
 
     schedule_poll()
-    {:noreply, new_state}
+    {:noreply, %{new_state | tick: new_tick}}
   end
 
   @impl true
