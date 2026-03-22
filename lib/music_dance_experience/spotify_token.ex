@@ -1,11 +1,34 @@
 defmodule MusicDanceExperience.SpotifyToken do
   use GenServer
+  require Logger
 
   # State: nil | %{access_token, refresh_token, expires_at}
 
   def start_link(_), do: GenServer.start_link(__MODULE__, nil, name: __MODULE__)
 
-  def init(_), do: {:ok, nil}
+  def init(_) do
+    case System.get_env("SPOTIFY_REFRESH_TOKEN") do
+      nil ->
+        Logger.info("[SpotifyToken] No SPOTIFY_REFRESH_TOKEN env var found, waiting for OAuth")
+        {:ok, nil}
+
+      refresh_token ->
+        Logger.info("[SpotifyToken] Bootstrapping from SPOTIFY_REFRESH_TOKEN env var")
+        case do_refresh(refresh_token) do
+          {:ok, access_token, expires_in} ->
+            Logger.info("[SpotifyToken] Bootstrap successful")
+            {:ok, %{
+              access_token: access_token,
+              refresh_token: refresh_token,
+              expires_at: System.system_time(:second) + expires_in - 60
+            }}
+
+          {:error, reason} ->
+            Logger.warning("[SpotifyToken] Bootstrap refresh failed: #{inspect(reason)}, waiting for OAuth")
+            {:ok, nil}
+        end
+    end
+  end
 
   @doc "Store tokens after OAuth callback."
   def set_tokens(access_token, refresh_token, expires_in) do
@@ -21,6 +44,10 @@ defmodule MusicDanceExperience.SpotifyToken do
   # --- Callbacks ---
 
   def handle_call({:set_tokens, access, refresh, expires_in}, _from, _state) do
+    Logger.info(
+      "[SpotifyToken] Setting tokens from OAuth callback; refresh_token_present=#{not is_nil(refresh)} expires_in=#{expires_in}"
+    )
+
     state = %{
       access_token: access,
       refresh_token: refresh,
@@ -31,13 +58,18 @@ defmodule MusicDanceExperience.SpotifyToken do
   end
 
   def handle_call(:get_token, _from, nil) do
+    Logger.warning("[SpotifyToken] Token requested while disconnected")
     {:reply, {:error, :not_connected}, nil}
   end
 
   def handle_call(:get_token, _from, state) do
     if System.system_time(:second) >= state.expires_at do
+      Logger.info("[SpotifyToken] Access token expired; attempting refresh")
+
       case do_refresh(state.refresh_token) do
         {:ok, new_access, new_expires_in} ->
+          Logger.info("[SpotifyToken] Access token refresh succeeded")
+
           new_state = %{
             state
             | access_token: new_access,
@@ -47,6 +79,7 @@ defmodule MusicDanceExperience.SpotifyToken do
           {:reply, {:ok, new_access}, new_state}
 
         {:error, reason} ->
+          Logger.warning("[SpotifyToken] Access token refresh failed: #{inspect(reason)}")
           {:reply, {:error, reason}, state}
       end
     else
@@ -60,6 +93,10 @@ defmodule MusicDanceExperience.SpotifyToken do
   # --- Private ---
 
   defp do_refresh(refresh_token) do
+    if is_nil(refresh_token) or refresh_token == "" do
+      Logger.warning("[SpotifyToken] Cannot refresh because refresh token is missing")
+      {:error, :missing_refresh_token}
+    else
     client_id = Application.get_env(:music_dance_experience, :spotify_client_id)
     client_secret = Application.get_env(:music_dance_experience, :spotify_client_secret)
 
@@ -72,7 +109,12 @@ defmodule MusicDanceExperience.SpotifyToken do
     if resp.status == 200 do
       {:ok, resp.body["access_token"], resp.body["expires_in"]}
     else
-      {:error, :refresh_failed}
+      Logger.warning(
+        "[SpotifyToken] Refresh request failed: status=#{resp.status} body=#{inspect(Map.take(resp.body, ["error", "error_description"]))}"
+      )
+
+      {:error, {:refresh_failed, resp.status}}
+    end
     end
   end
 end
