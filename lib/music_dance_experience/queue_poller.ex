@@ -5,6 +5,7 @@ defmodule MusicDanceExperience.QueuePoller do
 
   @pubsub MusicDanceExperience.PubSub
   @topic "queue:updates"
+  @presence_topic "queue:presence"
   @poll_interval 10_000
   @sync_every 3
 
@@ -14,8 +15,15 @@ defmodule MusicDanceExperience.QueuePoller do
 
   @impl true
   def init(_) do
+    Phoenix.PubSub.subscribe(@pubsub, @presence_topic)
     schedule_poll()
-    {:ok, %{now_playing: nil, tick: 0}}
+    {:ok, %{now_playing: nil, tick: 0, users_online: 0}}
+  end
+
+  @impl true
+  def handle_info(:poll, %{users_online: 0} = state) do
+    schedule_poll()
+    {:noreply, state}
   end
 
   @impl true
@@ -44,6 +52,12 @@ defmodule MusicDanceExperience.QueuePoller do
 
     schedule_poll()
     {:noreply, %{new_state | tick: new_tick}}
+  end
+
+  @impl true
+  def handle_info(%Phoenix.Socket.Broadcast{event: "presence_diff"}, state) do
+    users_online = MusicDanceExperienceWeb.Presence.list(@presence_topic) |> map_size()
+    {:noreply, %{state | users_online: users_online}}
   end
 
   @impl true
